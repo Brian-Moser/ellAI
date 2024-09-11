@@ -1,0 +1,9 @@
+Dataset Path: datasets/leaves_healthy
+Model: mobilenet_v2
+Image Path: test_images/bergahorn_healthy.jpg
+Method: finetuning
+Predicted Class: Bergahorn
+Class Probabilities:
+Bergahorn: 100.00%
+Hainbuche: 0.00%
+Rotbuche: 0.00%
