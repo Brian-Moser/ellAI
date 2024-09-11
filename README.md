@@ -19,7 +19,7 @@ This script performs image classification on a custom dataset using either a fin
 ### `--dataset_path`
 - **Type:** [`str`]
 - **Required:** [`True`]
-- **Description:** Path to the dataset directory within the [`datasets/`] folder. This directory should contain subdirectories for each class, with images inside those subdirectories.
+- **Description:** Path to the dataset directory within the [`datasets/`] folder. This directory should contain subdirectories for each class/category, with images inside those subdirectories.
 
 ### `--image_path`
 - **Type:** [`str`]
