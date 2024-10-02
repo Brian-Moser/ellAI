@@ -67,3 +67,4 @@ python main.py --dataset_path datasets/my_dataset --model resnet18 --use_finetun
 - Ensure that the dataset directory structure is correct, with subdirectories for each class containing the respective images.
 - If using fine-tuning, the script will save the fine-tuned model in the [`model_weights`] folder.
 - Logs of the classification results will be saved in the [`output`] folder. The naming of the log is depending on the [`dataset_path`], [`model`], [`image_path`] and the [`use_finetuning`] (either `finetuning` or `knn`). An example log name would be `log_leaves_healthy_mobilenet_v2_hainbuche_healthy.jpg_finetuning.txt`
+- Regarding class activation map, this is only possible for neural networks (clusters have no gradients)!
