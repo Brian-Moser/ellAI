@@ -41,6 +41,11 @@ This script performs image classification on a custom dataset using either a fin
 - **Required:** [`False`]
 - **Description:** Flag to retrain and overwrite the model if it already exists in the [`model_weights`] folder. If this flag is set, the script will retrain the model even if a saved model already exists.
 
+### `--use_cam`
+- **Type:** `flag`
+- **Required:** [`False`]
+- **Description:** Flag to also calculate the class activation map (CAM) for the image (explainable AI stuff).
+
 ## Example Usage
 
 ### Fine-tuning a different model than MobileNet

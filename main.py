@@ -1,4 +1,5 @@
 import os
+import cv2
 import torch
 import argparse
 import numpy as np
@@ -10,6 +11,80 @@ from torch.utils.data import DataLoader
 from torch.nn import functional as F
 from torch import nn, optim
 from PIL import Image
+
+def get_last_conv_layer(model):
+    layers = list(model.children())
+    while layers:
+        layer = layers.pop()
+        if isinstance(layer, nn.Conv2d):
+            return layer
+        elif isinstance(layer, nn.Sequential):
+            layers.extend(layer.children())
+    raise ValueError("No convolutional layer found in the model.")
+
+
+def generate_CAM(model, test_image, class_idx):
+    # Set up hooks to capture gradients and feature maps
+    gradients = []
+    feature_maps = []
+
+    def save_gradient(grad):
+        gradients.append(grad)
+
+    def save_feature_map(module, input, output):
+        feature_maps.append(output)
+
+    # Register hooks on the last convolutional layer
+    last_conv_layer = get_last_conv_layer(model)
+    last_conv_layer.register_forward_hook(save_feature_map)
+    last_conv_layer.register_backward_hook(lambda module, grad_in, grad_out: save_gradient(grad_out[0]))
+
+    # Ensure input requires gradients
+    test_image.requires_grad = True
+
+    # Forward pass
+    model.eval()  # Set model to eval mode
+    outputs = model(test_image)
+    
+    # Create one-hot output for the predicted class
+    one_hot_output = torch.zeros(outputs.size()).to(test_image.device)
+    one_hot_output[0][class_idx] = 1
+    
+    # Zero gradients and backward pass
+    model.zero_grad()
+    outputs.backward(gradient=one_hot_output)
+
+    # Get the gradients and feature map
+    gradients = gradients[0]  # Get the captured gradient
+    feature_map = feature_maps[0]  # Get the captured feature map
+
+    # Calculate weights and CAM
+    weights = gradients.mean(dim=[1, 2], keepdim=True)
+    cam = (weights * feature_map).sum(dim=1).squeeze()
+
+    # Process the CAM
+    cam = F.relu(cam)  # ReLU
+    cam /= cam.max()  # Normalize
+    cam = cam.cpu().detach().numpy()
+    cam = cv2.resize(cam, (256, 256))  # Resize to match input size
+    cam = (cam * 255).astype(np.uint8)
+
+    return cam
+
+
+
+def save_CAM(cam, original_image_path, output_path):
+    cam_colored = cv2.applyColorMap(cam, cv2.COLORMAP_JET)  # Apply color map
+    original_image = cv2.imread(original_image_path)
+    original_image = cv2.resize(original_image, (256, 256))  # Resize to match CAM
+
+    # Combine original image and CAM
+    combined = cv2.addWeighted(original_image, 0.5, cam_colored, 0.5, 0)
+    
+    output_file_name = output_path.replace(".jpg", "_finetuning_CAM.jpg")
+    cv2.imwrite(output_file_name, combined)
+    print(f"Class Activation Map saved to {output_file_name}")
+
 
 def get_regular_transforms():
     return transforms.Compose([
@@ -66,6 +141,7 @@ def train_finetuned_model(dataset, model, device, epochs=5):
     
     # Set model to training mode
     model.train()
+    model.to(device)
 
     # Set up loss function and optimizer
     criterion = nn.CrossEntropyLoss()
@@ -94,7 +170,7 @@ def train_finetuned_model(dataset, model, device, epochs=5):
 def save_model(model, dataset_path, model_name):
     os.makedirs("model_weights", exist_ok=True)
     model_save_path = os.path.join("model_weights", f"{os.path.basename(dataset_path)}_{model_name}.pth")
-    torch.save(model.state_dict(), model_save_path)
+    torch.save(model.cpu().state_dict(), model_save_path)
     print(f"Model saved to {model_save_path}")
 
 def load_model(model, dataset_path, model_name):
@@ -126,7 +202,6 @@ def main(args):
     dataset = load_dataset(args.dataset_path)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = getattr(models, args.model)(pretrained=True)
-    model = model.to(device)
 
     if args.use_finetuning:
         # Modify the final layer to match the number of classes
@@ -147,12 +222,20 @@ def main(args):
 
         # Load and process the image for classification
         test_image = load_image(args.image_path).unsqueeze(0).to(device)
+        model.to(device)
         model.eval()
         with torch.no_grad():
             outputs = model(test_image)
             probabilities = F.softmax(outputs, dim=1)
             _, predicted = torch.max(outputs, 1)
             predicted_class = dataset.classes[predicted.item()]
+
+            class_idx = predicted.item()
+
+        if (args.use_cam):
+            # Generate and save the CAM
+            cam = generate_CAM(model, test_image, class_idx)
+            save_CAM(cam, args.image_path, os.path.join("output", f"log_{os.path.basename(args.dataset_path)}_{args.model}_{os.path.basename(args.image_path)}_cam.jpg"))
 
         print(f"Predicted class for the image {args.image_path}: {predicted_class}")
         save_log(args.dataset_path, args.model, args.image_path, "finetuning", predicted_class, probabilities.cpu().numpy(), dataset.classes)
@@ -188,6 +271,8 @@ if __name__ == "__main__":
                         help="Flag to use fine-tuning instead of KNN for classification")
     parser.add_argument("--retrain", action='store_true',
                         help="Flag to retrain and overwrite the model if it already exists in the model_weights folder")
+    parser.add_argument("--use_cam", action='store_true',
+                        help="Flag to also calculate the class activation map (CAM) for the image")
 
     args = parser.parse_args()
     main(args)

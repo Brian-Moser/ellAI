@@ -194,46 +194,8 @@ pyrightconfig.json
 .ionide
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,python
-Chat
 
-New Conversation
-
-🤓 Explain a complex thing
-
-Explain Artificial Intelligence so that I can explain it to my six-year-old child.
-
-
-🧠 Get suggestions and create new ideas
-
-Please give me the best 10 travel ideas around the world
-
-
-💭 Translate, summarize, fix grammar and more…
-
-Translate "I love you into" French
-
-
-GPT-3.5
-Hello, how can I help you today?
-
-coin image
-10
-Upgrade
-
-
-
-Ask me anything...
-
-
-Make a Review & Earn Credit ❤
-Chat
-Ask
-Search
-Write
-Image
-ChatPDF
-Vision
-Full Page
-Invite & Earn
-
+model_weights/
+model_weights/
+output/
 
