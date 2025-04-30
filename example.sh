@@ -1,1 +1,0 @@
-python main.py --dataset_path datasets/leaves_healthy/ --use_finetuning --image_path=test_images/bergahorn_healthy.jpg --use_cam

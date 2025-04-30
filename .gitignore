@@ -196,6 +196,6 @@ pyrightconfig.json
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,python
 
 model_weights/
-model_weights/
+test_results/
 output/
 
